@@ -5,16 +5,14 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
  * - 실제 서버의 타입과 동일하게 유지하면 코드 수정 없이 그대로 전환 가능
  */
 const typeDefs = /* GraphQL */ `
-  scalar DateTime
-
-  type User {
+  type MockUser {
     id: ID!
     name: String!
     email: String!
     createdAt: DateTime!
   }
 
-  type Order {
+  type MockOrder {
     id: ID!
     userId: ID!
     total: Int!
@@ -22,15 +20,15 @@ const typeDefs = /* GraphQL */ `
     createdAt: DateTime!
   }
 
-  type Query {
-    users: [User!]!
-    user(id: ID!): User
-    orders(userId: ID): [Order!]!
+  type MockQuery {
+    users: [MockUser!]!
+    user(id: ID!): MockUser
+    orders(userId: ID): [MockOrder!]!
   }
 
-  type Mutation {
-    createUser(name: String!, email: String!): User!
-    createOrder(userId: ID!, total: Int!): Order!
+  type MockMutation {
+    createUser(name: String!, email: String!): MockUser!
+    createOrder(userId: ID!, total: Int!): MockOrder!
   }
 `;
 
@@ -65,14 +63,14 @@ const db = {
  * - 간단한 CRUD 로직
  */
 const resolvers = {
-  Query: {
+  MockQuery: {
     users: () => db.users,
     user: (_: any, { id }: { id: string }) => db.users.find((u) => u.id === id) ?? null,
     orders: (_: any, { userId }: { userId?: string }) =>
       userId ? db.orders.filter((o) => o.userId === userId) : db.orders,
   },
 
-  Mutation: {
+  MockMutation: {
     createUser: (_: any, { name, email }: { name: string; email: string }) => {
       const newUser = {
         id: String(Date.now()),
