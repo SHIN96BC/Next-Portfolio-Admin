@@ -45,6 +45,7 @@
     "@graphql-codegen/typescript-operations": "^4.6.1",
     "@graphql-codegen/typescript-react-query": "^6.1.1",
     "@graphql-tools/schema": "^10.0.25",
+    "@graphql-tools/mock": "^9.1.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

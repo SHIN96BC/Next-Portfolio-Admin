@@ -29,19 +29,40 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## 관련 프로젝트 전체 구조
 
+```
+[Clients]
+ ├─ User FE (Next.js, REST)
+ └─ Admin FE (Next.js, GraphQL)
+
+[Edge]
+ └─ API Gateway / Edge (Auth, Rate limit, WAF, Routing)
+
+[BFF Layer]
+ ├─ User BFF (REST)
+ └─ Admin BFF (GraphQL)
+
+[Services]
+ └─ MSA (Spring Boot, 각 도메인별 서비스) → 각자 DB (소유권 분리)
+```
+
 ### FE
 
-- Next.js(app router) Client Web
+- Next.js(app router) Client Web(REST API)
     - Full Responsive Web Design
     - FSD Pattern
-- Next.js(app router) Admin Web
+    - 페이지 로딩/캐싱/엣지 최적화 쉽고, CDN과 궁합 좋음.
+- Next.js(app router) Admin Web(GraphQL)
     - Full Responsive Web Design
     - FSD Pattern
+    - 화면이 데이터 탐색적이고 테이블/필터/정렬/부분 갱신이 많아 GraphQL이 유리.
 - Flutter Client App
 
 
 ### BE
-
+- API Gateway/Edge(NGINX/Envoy/API Gateway/AWS ALB+WAF 등)
+  - AuthN/Token 검증, Rate limit, WAF, IP 제어, 요청 라우팅 표준화
+  - 공통 헤더(요청 ID, trace) 주입
+  - Canary/Blue-Green 라우팅 쉬움
 - Spring Boot 3.x.x(Gradle)
     - MSA Architecture
     - Gateway
@@ -133,56 +154,114 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 | **DTO / Entity**      | `kebab-case`         | `user.dto.ts`, `product.entity.ts`       | 백엔드 스타일일 땐 suffix 구분             |
 
 
-## REST Services Folder And File Rules
-- *DIP 원칙을 지켜서 해당 Service 객체들을 사용하는 곳에서는 반드시 구현체가 아닌 인터페이스에만 의존할 것) (Domain Service에서 Base가 필요한 경우 생성자 주입 방식으로 주입하여 싱글톤으로 사용
-- /services/base/(Base Name):
-    - (Base Name)ServiceBase.ts: 서비스의 기본이 되는 HTTP 통신, token 관리 등의 메서드들을 가진 Interface 정의
-    - (Base Name)ServiceBaseImpl.ts: Service Base Interface를 구현한 Class
-- /services/binding:
-    - Binding.ts: Container에 Bind할 때 사용하는 Class의 인터페이스 정의
-    - BindingImpl.ts: Binding 인터페이스를 구현한 Class 정의
-- /services/container:
-    - ServiceContainer.ts: Service 객체들을 등록하고 관리하는 Container Class의 Interface 정의
-    - ServiceContainerImpl.ts: ServiceContainer Interface를 구현한 Class 정의
-- /services/domain/(Domain Name):
-    - (Domain Name)Service.ts: 각 도메인 별 서비스의 Interface 정의
-    - (Domain Name)ServiceImpl.ts: Service Interface를 구현한 Class 정의
-    - model.ts: Api Request, Response Model 정의
-    - queries.ts: useQuery 에 사용될 query Key, query function 정의
-    - mutations.ts: useMutation 에 사용될 mutation key, mutation function 정의
-    - use(Domain Name)Service.ts: Api Call Custom Hooks 정의
-- /services/model.ts: 공통 Request, Response Model 정의
-- /services/service-constants.ts: Service에서 공통으로 사용되는 상수 값들 정의
-- /services/service-type.d.ts: Service에서 공통으로 사용되는 type 정의
+## Graphql Services Folder And File Rules
+- query, mutation 명명 규칙
+  - 등록 서비스: register + (Domain Name)
+  - 조회 서비스: find + (Domain Name)
+  - 수정 서비스: edit + (Domain Name)
+  - 삭제 서비스: remove + (Domain Name)
+- entities(query, mutation 정의)
+  - (Domain Name)
+    - model
+      - gql
+        - (query, mutation 명명 규칙).graphql
+- graphql
+  - (Domain Name)
+    - (Domain Name).types.graphql        # BookingFlight, Segment, enums
+    - (Domain Name).inputs.graphql       # CreateInput, Filter, OrderBy
+    - (Domain Name).queries.graphql
+    - (Domain Name).mutations.graphql
+  ...
+  - common
+    - common.scalars.graphql             # DateTime, Money 등
+    - common.shared.graphql              # 공통
+  - base.schema.graphql                  # Query, Mutation, PageInfo, UserError 등의 Type 정의  
 
-## REST Service Naming Rules
-- /service/domain/(Domain Name):
-    - (Domain Name)Service.ts & (Domain Name)ServiceImpl.ts:
-        - Method명:
-            - Service의 관심사는 HTTP 통신이기 때문에 HTTP와 관련된 명칭으로 작성
-            - (HTTP Method 유형) + (Api Url의 마지막 path) -> ex: getSearchGNB
-        - Arg명:
-            - Get, Delete: params -> ex: getSearchGNB(params: SearchGNBGetReq)
-            - Post, Patch, Put: data -> ex: postSearchLocalTour(data: SearchLocalTourPostReq)
-            - Head, Options -> 없음
-    - model.ts:
-        - Api 통신에 직접적으로 사용되는 Request, Response Model은 interface 로 정의
-        - 그외 Request, Response 안에서 공통으로 쓰이는 것들은 등은 type 으로 정의
-        - Request Model명: (Api Url의 마지막 path) + (HTTP Method 유형) + Req -> ex: SearchGNBGetReq
-        - Response Model명: (Api Url의 마지막 path) + (HTTP Method 유형) + Res -> ex: SearchGNBGetRes
-    - queries.ts & mutations.ts:
-        - queries 와 mutations 의 관심사는 HTTP 통신이 아니고, 어떤 데이터를 등록하거나, 찾거나 하는 부분까지가 관심사이기 때문에 좀 더 직관적이고 해당 function이 하는일에 가까운 명칭으로 작성
-        - 등록 서비스: register + (Api Url의 마지막 path)
-        - 조회 서비스: find + (Api Url의 마지막 path)
-        - 수정 서비스: edit + (Api Url의 마지막 path)
-        - 삭제 서비스: remove + (Api Url의 마지막 path)
-        - 그외 서비스: (해당 서비스가 하는 일에 대한 명칭) + (Api Url의 마지막 path) -> 다만 하는일에 대한 명칭만으로 어떤일을 하는지 명확하게 알 수 있는 경우 (Api Url의 마지막 path)는 생략 가능(ex: login, fileUpload 등)
-    - use(Domain Name)Service.ts:
-        - Hook 명칭은 직관적으로 어떤 API를 호출하는지와 Query이지 mutation인지를 구분할 수 있도록 함
-        - useQuery를 사용하는 경우: use(하는 일)(Api Url의 마지막 path)Query.ts
-            - ex: useFindTestQuery
-        - useMutation를 사용하는 경우: use(하는 일)(Api Url의 마지막 path)Mutation.ts
-            - ex: useRegisterTestMutation
+## Graphql Service Naming Rules
+### 기본 컨벤션
+
+Type/Interface/Union/Enum/Scalar: PascalCase (FlightBooking, User, BookingStatus)
+
+field/argument/directive명: camelCase (createdAt, isRefundable, orderBy)
+
+ENUM 값: UPPER_SNAKE_CASE (CONFIRMED, CANCELLED)
+
+도메인 접두사: 짧게 1~2 단어, 바운디드 컨텍스트 기준으로 (Booking, Payment, Inventory 등)
+
+- type Query, Mutation을 정의할 때는 시스템에 더 가까운 시스템 중심 언어로 작성(shared/libs/graphql/schemas/**/model 에 들어가는 코드)
+  - 등록 서비스: create
+    - 명명 규칙: create(Domain Name)
+    - 명명 예시: createProduct
+  - 조회 서비스: get
+    - 명명 규칙: get(Domain Name)By(해당 값을 찾아올 때 사용할 값)
+    - 명명 예시: getProductById
+    - 리스트에는 복수형 사용 예시: getProducts
+      - 복수형은 특별한 의미 구분이 필요할 때만 뒤에 뭔가 붙인다
+  - 수정 서비스: update
+    - 명명 규칙: update(Domain Name)
+    - 명명 예시: updateProduct
+  - 삭제 서비스: delete
+    - 명명 규칙: delete(Domain Name)
+    - 명명 예시: deleteProduct
+
+- query, mutation 을 정의할 때는 사용자에 더 가까운 사용자 중심 언어로 작성(entities/**/model 에 들어가는 코드)
+  - 등록 서비스: register
+    - 명명 규칙: register(Domain Name)
+    - 명명 예시: registerProduct
+  - 조회 서비스: find
+    - 명명 규칙: find(Domain Name)By(해당 값을 찾아올 때 사용할 값)
+    - 명명 예시: findProductById
+    - 리스트에는 복수형 사용 예시: findProducts
+      - 복수형은 특별한 의미 구분이 필요할 때만 뒤에 뭔가 붙인다
+  - 수정 서비스: edit
+    - 명명 규칙: edit(Domain Name)
+    - 명명 예시: editProduct
+  - 삭제 서비스: remove
+    - 명명 규칙: remove(Domain Name)
+    - 명명 예시: removeProduct
+
+### 역할별 Suffix 규칙
+- 입력형: ...Input
+  - Entity 생성: (Domain Name)(Entity Name)CreateInput
+  - Entity 수정: (Domain Name)(Entity Name)UpdateInput
+  - 조회용 필터: <Domain><Entity>Filter 또는 Where 한 가지만 선택
+  - 정렬: <Domain><Entity>OrderBy (ENUM)
+  - 페이징: Relay 채택 시 Connection/Edge 사용
+  - 결과 값: (Domain Name)Result
+- 페이로드/결과형: ...Payload
+  - 뮤테이션 결과를 명확화: 데이터 + 오류/알림 묶음
+- 연결형: ...Connection, ...Edge (Relay 스타일)
+- 에러 컬렉션: UserError(공통) — code, message, path
+- 공통 인터페이스: Node { id: ID! } 를 도입해 전역 ID 일관화
+
+###  도메인 접두사 전략
+
+이름 충돌/모호성 방지: Order는 Payment와 Fulfillment에서 의미가 다를 수 있음 →
+PaymentOrder, FulfillmentOrder처럼 도메인 접두사를 붙여 구분.
+
+너무 길면 2단어 이내로 줄이기: FlightBooking (O), AirlineFlightItineraryBooking (X)
+
+### 뮤테이션/쿼리 이름 규칙
+
+Query: 엔티티 복수형/단수형 명확히 (bookingFlight, bookingFlights)
+
+Mutation: 동사+엔티티 형태, 현재형 또는 명령형 (createBookingFlight, cancelBookingFlight)
+
+동일 액션은 한 가지 동사로 통일 (create vs add 혼용 금지)
+
+### 불리언/시간/ID 규칙
+
+불리언은 is/has 접두사 선호: isRefundable, hasVoucher
+
+시간은 전부 DateTime(ISO-8601, UTC) 스칼라로 통일 (createdAt, expiresAt)
+
+모든 주요 엔티티는 Node 구현 + id: ID! (전역 ID, 클라이언트 캐싱 안정화)
+
+### Deprecation & 버저닝
+
+GraphQL은 필드 단위 @deprecated가 정석
+
+새 이름을 추가하고, 문서/체인지로그로 마이그레이션 안내.
 
 
 ## Commit & Branch Pattern
