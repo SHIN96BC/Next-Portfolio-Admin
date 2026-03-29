@@ -4,7 +4,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## 현재 작업중입니다.
 - 해당 포트폴리오를 다른 Organizations 으로 이동했습니다.
 - 포트폴리오 프로젝트 코드를 확인하시려면 아래의 링크를 눌러주세요.
-- <a href="https://github.com/SHIN96BC-Portfolio">포르폴리오 프로젝트 확인하기</a>
+- <a href="https://github.com/SHIN96BC-Portfolio/Next-Portfolio-Admin.git">포르폴리오 프로젝트 확인하기</a>
 
 ## 프로젝트 설명
 - Next.js 웹 프론트 백오피스 코드를 보여드리기 위한 프로젝트 입니다.
